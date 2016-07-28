@@ -32,7 +32,6 @@ Changes:
  */
 package com.jhlabs.map.proj;
 
-import com.jhlabs.map.*;
 import java.awt.geom.Point2D;
 import java.io.BufferedReader;
 import java.io.File;
@@ -41,9 +40,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StreamTokenizer;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Hashtable;
+import java.util.StringTokenizer;
+import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import com.jhlabs.map.AngleFormat;
+import com.jhlabs.map.Ellipsoid;
+import com.jhlabs.map.MapMath;
+import com.jhlabs.map.Unit;
+import com.jhlabs.map.Units;
 
 public class ProjectionFactory {
 
@@ -62,19 +70,18 @@ public class ProjectionFactory {
     /**
      * Return a projection initialized with a PROJ.4 argument list.
      */
-    public static Projection fromPROJ4Specification(String[] args) {
+    public static Projection fromPROJ4Specification(final String[] args) {
         Projection projection = null;
         Ellipsoid ellipsoid = null;
         double a = 0, b = 0, es = 0;
 
-        Hashtable params = new Hashtable();
-        for (int i = 0; i < args.length; i++) {
-            String arg = args[i];
+        final Hashtable params = new Hashtable();
+        for (final String arg : args) {
             if (arg.startsWith("+")) {
-                int index = arg.indexOf('=');
+                final int index = arg.indexOf('=');
                 if (index != -1) {
-                    String key = arg.substring(1, index);
-                    String value = arg.substring(index + 1);
+                    final String key = arg.substring(1, index);
+                    final String value = arg.substring(index + 1);
                     params.put(key, value);
                 }
             }
@@ -110,10 +117,10 @@ public class ProjectionFactory {
                 s = (String) params.get("datum");
             }
             if (s != null) {
-                Ellipsoid[] ellipsoids = Ellipsoid.ellipsoids;
-                for (int i = 0; i < ellipsoids.length; i++) {
-                    if (ellipsoids[i].shortName.equals(s)) {
-                        ellipsoid = ellipsoids[i];
+                final Ellipsoid[] ellipsoids = Ellipsoid.ellipsoids;
+                for (final Ellipsoid ellipsoid2 : ellipsoids) {
+                    if (ellipsoid2.shortName.equals(s)) {
+                        ellipsoid = ellipsoid2;
                         break;
                     }
                 }
@@ -207,9 +214,9 @@ public class ProjectionFactory {
         projection.setEllipsoid(new Ellipsoid(ellipsoidName, a, es, ellipsoidName));
 
         // Other arguments
-//		projection.setProjectionLatitudeDegrees( 0 );
-//		projection.setProjectionLatitude1Degrees( 0 );
-//		projection.setProjectionLatitude2Degrees( 0 );
+        // projection.setProjectionLatitudeDegrees( 0 );
+        // projection.setProjectionLatitude1Degrees( 0 );
+        // projection.setProjectionLatitude2Degrees( 0 );
         s = (String) params.get("lat_0");
         if (s != null) {
             projection.setProjectionLatitudeDegrees(parseAngle(s));
@@ -220,12 +227,12 @@ public class ProjectionFactory {
         }
         s = (String) params.get("lat_1");
         if (s != null && projection instanceof ConicProjection) {
-            ConicProjection conic = (ConicProjection) projection;
+            final ConicProjection conic = (ConicProjection) projection;
             conic.setProjectionLatitude1Degrees(parseAngle(s));
         }
         s = (String) params.get("lat_2");
         if (s != null && projection instanceof ConicProjection) {
-            ConicProjection conic = (ConicProjection) projection;
+            final ConicProjection conic = (ConicProjection) projection;
             conic.setProjectionLatitude2Degrees(parseAngle(s));
         }
         s = (String) params.get("lat_ts");
@@ -251,7 +258,7 @@ public class ProjectionFactory {
 
         s = (String) params.get("units");
         if (s != null) {
-            Unit unit = Units.findUnits(s);
+            final Unit unit = Units.findUnits(s);
             if (unit != null) {
                 projection.setFromMetres(1.0 / unit.value);
             }
@@ -273,62 +280,63 @@ public class ProjectionFactory {
             }
         }
 
-//zone
-//towgs84 - see Datum
-//alpha
-//datum
-//lat_ts
-//azi
-//lonc
-//rf
-//pm
+        // zone
+        // towgs84 - see Datum
+        // alpha
+        // datum
+        // lat_ts
+        // azi
+        // lonc
+        // rf
+        // pm
         // FIXME !!!
         // projection.initialize();
 
         return projection;
     }
 
-    private static double parseAngle(String s) {
+    private static double parseAngle(final String s) {
         return format.parse(s, null).doubleValue();
     }
+
     private static Hashtable registry;
     private static Hashtable nameMap;
 
-    private static void register(String proj4Name, Class cls) throws InstantiationException, IllegalAccessException {
+    private static void register(final String proj4Name, final Class cls) throws InstantiationException, IllegalAccessException {
         try {
             registry.put(proj4Name, cls);
-            Projection projection = (Projection) cls.newInstance();
-            String readableName = projection.getName();
+            final Projection projection = (Projection) cls.newInstance();
+            final String readableName = projection.getName();
             nameMap.put(readableName, proj4Name);
-        } catch (InstantiationException e) {
+        } catch (final InstantiationException e) {
             System.err.println("unable to register " + proj4Name);
             throw e;
         }
     }
 
-    public static Projection getNamedProjection(String name) {
+    public static Projection getNamedProjection(final String name) {
         if (registry == null) {
             initialize();
         }
-        String proj4Name = (String) nameMap.get(name);
+        final String proj4Name = (String) nameMap.get(name);
         return getNamedPROJ4Projection(proj4Name);
     }
 
-    public static Projection getNamedPROJ4Projection(String name) {
+    public static Projection getNamedPROJ4Projection(final String name) {
         if (registry == null) {
             initialize();
         }
-        Class cls = (Class) registry.get(name);
+        final Class cls = (Class) registry.get(name);
         if (cls != null) {
             try {
-                Projection projection = (Projection) cls.newInstance();
+                final Projection projection = (Projection) cls.newInstance();
                 if (projection != null) {
                     projection.setName(name); // is this needed ? FIXME
                 }
                 return projection;
-            } catch (IllegalAccessException e) {
+            } catch (final IllegalAccessException e) {
                 e.printStackTrace();
-            } catch (InstantiationException e) {
+            } catch (final InstantiationException e) {
                 e.printStackTrace();
             }
         }
@@ -339,7 +347,7 @@ public class ProjectionFactory {
         if (registry == null) {
             initialize();
         }
-        Object[] names = nameMap.keySet().toArray();
+        final Object[] names = nameMap.keySet().toArray();
         Arrays.sort(names);
         return names;
     }
@@ -353,7 +361,7 @@ public class ProjectionFactory {
             register("aeqd", EquidistantAzimuthalProjection.class);
             register("airy", AiryProjection.class);
             register("aitoff", AitoffProjection.class);
-//            register("alsk", Projection.class);
+            // register("alsk", Projection.class);
             register("apian1", Apian1Projection.class);
             register("apian2", Apian2Projection.class);
             register("ardn_cls", ArdenCloseProjection.class);
@@ -367,7 +375,7 @@ public class ProjectionFactory {
             register("cc", CentralCylindricalProjection.class);
             register("cea", CylindricalEqualAreaProjection.class);
             register("compmill", CompactMillerProjection.class);
-//		register( "chamb", Projection.class);
+            // register( "chamb", Projection.class);
             register("collg", CollignonProjection.class);
             register("crast", CrasterProjection.class);
             register("denoy", DenoyerProjection.class);
@@ -387,27 +395,32 @@ public class ProjectionFactory {
             register("four2", Fournier2Projection.class);
             register("gall", GallProjection.class);
             register("gins8", Ginzburg8Projection.class);
-//		register( "gn_sinu", Projection.class);
+            // register( "gn_sinu", Projection.class);
             register("gnom", GnomonicAzimuthalProjection.class);
             register("goode", GoodeProjection.class);
-//		register( "gs48", Projection.class, "Mod. Stererographics of 48 U.S." );
-//		register( "gs50", Projection.class, "Mod. Stererographics of 50 U.S." );
-            register("hammer", HammerProjection.class); // Eckert-Greifendorff is in own class
+            // register( "gs48", Projection.class, "Mod. Stererographics of 48
+            // U.S." );
+            // register( "gs50", Projection.class, "Mod. Stererographics of 50
+            // U.S." );
+            register("hammer", HammerProjection.class); // Eckert-Greifendorff
+                                                        // is in own class
             register("hatano", HatanoProjection.class);
             register("holzel", HolzelProjection.class);
             register("hufnagel", HufnagelProjection.class);
-//		register( "imw_p", Projection.class, "Internation Map of the World Polyconic" );
+            // register( "imw_p", Projection.class, "Internation Map of the
+            // World Polyconic" );
             register("kav1", Kavrayskiy1Projection.class);
             register("kav5", Kavrayskiy5Projection.class);
             register("kav7", Kavrayskiy7Projection.class);
-//		register( "labrd", Projection.class, "Laborde" );
+            // register( "labrd", Projection.class, "Laborde" );
             register("laea", LambertAzimuthalEqualAreaProjection.class);
             register("lagrng", LagrangeProjection.class);
             register("larr", LarriveeProjection.class);
             register("lask", LaskowskiProjection.class);
             register("lcc", LambertConformalConicProjection.class);
             register("leac", LambertEqualAreaConicProjection.class);
-//		register( "lee_os", Projection.class, "Lee Oblated Stereographic" );
+            // register( "lee_os", Projection.class, "Lee Oblated Stereographic"
+            // );
             register("longlat", LinearProjection.class);
             register("loxim", LoximuthalProjection.class);
             register("lsat", LandsatProjection.class);
@@ -417,9 +430,10 @@ public class ProjectionFactory {
             register("mbtfpq", McBrydeThomasFlatPolarQuarticProjection.class);
             // register("mbtfps", .class);
             register("merc", MercatorProjection.class);
-//		register( "mil_os", Projection.class, "Miller Oblated Stereographic" );
+            // register( "mil_os", Projection.class, "Miller Oblated
+            // Stereographic" );
             register("mill", MillerCylindrical1Projection.class);
-//		register( "mpoly", Projection.class, "Modified Polyconic" );
+            // register( "mpoly", Projection.class, "Modified Polyconic" );
             register("moll", MollweideProjection.class);
             register("murd1", Murdoch1Projection.class);
             register("murd2", Murdoch2Projection.class);
@@ -431,9 +445,11 @@ public class ProjectionFactory {
             register("nicol", NicolosiProjection.class);
             register("nsper", PerspectiveProjection.class);
             register("nzmg", NZMGProjection.class);
-//		register( "ob_tran", Projection.class, "General Oblique Transformation" );
-//		register( "ocea", Projection.class, "Oblique Cylindrical Equal Area" );
-//		register( "oea", Projection.class, "Oblated Equal Area" );
+            // register( "ob_tran", Projection.class, "General Oblique
+            // Transformation" );
+            // register( "ocea", Projection.class, "Oblique Cylindrical Equal
+            // Area" );
+            // register( "oea", Projection.class, "Oblated Equal Area" );
             register("omerc", ObliqueMercatorProjection.class);
             register("ortel", OrteliusProjection.class);
             register("ortho", OrthographicAzimuthalProjection.class);
@@ -442,14 +458,17 @@ public class ProjectionFactory {
             register("poly", PolyconicProjection.class);
             register("putp1", PutninsP1Projection.class);
             register("putp2", PutninsP2Projection.class);
-//		register( "putp3", Projection.class, "Putnins P3" );            
+            // register( "putp3", Projection.class, "Putnins P3" );
             register("putp4p", PutninsP4PProjection.class);
             register("putp5", PutninsP5Projection.class);
             register("putp5p", PutninsP5PProjection.class);
-//		register( "putp6", Projection.class, "Putnins P6" );
-//		register( "putp6p", Projection.class, "Putnins P6'" );
+            // register( "putp6", Projection.class, "Putnins P6" );
+            // register( "putp6p", Projection.class, "Putnins P6'" );
             register("qua_aut", QuarticAuthalicProjection.class);
-            register("robin", RobinsonProjection.class); // RobinsonProjectionOriginal_Proj4_JHL has vertical shift at latitude +/-40 degrees
+            register("robin", RobinsonProjection.class); // RobinsonProjectionOriginal_Proj4_JHL
+                                                         // has vertical shift
+                                                         // at latitude +/-40
+                                                         // degrees
             register("rpoly", RectangularPolyconicProjection.class);
             register("sinu", SinusoidalProjection.class);
             register("somerc", SwissObliqueMercatorProjection.class);
@@ -458,16 +477,18 @@ public class ProjectionFactory {
             register("tcea", TCEAProjection.class);
             register("tissot", TissotProjection.class);
             register("tmerc", TransverseMercatorProjection.class);
-//		register( "tpeqd", Projection.class, "Two Point Equidistant" );
-//		register( "tpers", Projection.class, "Tilted perspective" );
-//		register( "ups", Projection.class, "Universal Polar Stereographic" );
-//		register( "urm5", Projection.class, "Urmaev V" );
-            register("urmfps", URMFPSProjection.class); // Urmaev Flat-Polar Sinusoidal
+            // register( "tpeqd", Projection.class, "Two Point Equidistant" );
+            // register( "tpers", Projection.class, "Tilted perspective" );
+            // register( "ups", Projection.class, "Universal Polar
+            // Stereographic" );
+            // register( "urm5", Projection.class, "Urmaev V" );
+            register("urmfps", URMFPSProjection.class); // Urmaev Flat-Polar
+                                                        // Sinusoidal
             register("utm", UniversalTransverseMercatorProjection.class);
             register("vandg", VanDerGrintenProjection.class);
-//		register( "vandg2", Projection.class, "van der Grinten II" );
-//		register( "vandg3", Projection.class, "van der Grinten III" );
-//		register( "vandg4", Projection.class, "van der Grinten IV" );
+            // register( "vandg2", Projection.class, "van der Grinten II" );
+            // register( "vandg3", Projection.class, "van der Grinten III" );
+            // register( "vandg4", Projection.class, "van der Grinten IV" );
             register("vitk1", VitkovskyProjection.class);
             register("wag1", Wagner1Projection.class);
             register("wag2", Wagner2Projection.class);
@@ -480,21 +501,21 @@ public class ProjectionFactory {
             register("wink1", Winkel1Projection.class);
             register("wink2", Winkel2Projection.class);
             register("wintri", WinkelTripelProjection.class);
-        } catch (InstantiationException ex) {
+        } catch (final InstantiationException ex) {
             Logger.getLogger(ProjectionFactory.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
+        } catch (final IllegalAccessException ex) {
             Logger.getLogger(ProjectionFactory.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
-    public static Projection readProjectionFile(String file, String name) throws IOException {
+    public static Projection readProjectionFile(final String file, final String name) throws IOException {
 
         BufferedReader reader = null;
         try {
-            String filePath = "/coordsys/" + file;
-            InputStream is = ProjectionFactory.class.getResourceAsStream(filePath);
+            final String filePath = "/coordsys/" + file;
+            final InputStream is = ProjectionFactory.class.getResourceAsStream(filePath);
             reader = new BufferedReader(new InputStreamReader(is));
-            StreamTokenizer t = new StreamTokenizer(reader);
+            final StreamTokenizer t = new StreamTokenizer(reader);
             t.commentChar('#');
             t.ordinaryChars('0', '9');
             t.ordinaryChars('.', '.');
@@ -516,13 +537,13 @@ public class ProjectionFactory {
                     throw new IOException(t.lineno() + ": Word expected after '<'");
                 }
 
-                String cname = t.sval;
+                final String cname = t.sval;
                 t.nextToken();
                 if (t.ttype != '>') {
                     throw new IOException(t.lineno() + ": '>' expected");
                 }
                 t.nextToken();
-                Vector v = new Vector();
+                final Vector v = new Vector();
                 while (t.ttype != '<') {
                     if (t.ttype == '+') {
                         t.nextToken();
@@ -530,14 +551,15 @@ public class ProjectionFactory {
                     if (t.ttype != StreamTokenizer.TT_WORD) {
                         throw new IOException(t.lineno() + ": Word expected after '+'");
                     }
-                    String key = t.sval;
+                    final String key = t.sval;
                     t.nextToken();
                     if (t.ttype == '=') {
                         t.nextToken();
-                        //Removed check to allow for proj4 hack +nadgrids=@null
-                        //if ( t.ttype != StreamTokenizer.TT_WORD )
-                        //	throw new IOException( t.lineno()+": Value expected after '='" );
-                        String value = t.sval;
+                        // Removed check to allow for proj4 hack +nadgrids=@null
+                        // if ( t.ttype != StreamTokenizer.TT_WORD )
+                        // throw new IOException( t.lineno()+": Value expected
+                        // after '='" );
+                        final String value = t.sval;
                         t.nextToken();
                         if (key.startsWith("+")) {
                             v.add(key + "=" + value);
@@ -552,7 +574,7 @@ public class ProjectionFactory {
                 }
                 t.nextToken();
                 if (cname.equals(name)) {
-                    String[] args = new String[v.size()];
+                    final String[] args = new String[v.size()];
                     v.copyInto(args);
                     return fromPROJ4Specification(args);
                 }
@@ -566,59 +588,51 @@ public class ProjectionFactory {
 
     }
 
-    public static Projection getNamedPROJ4CoordinateSystem(String name) {
-        String[] files = {
-            "world",
-            "nad83",
-            "nad27",
-            "esri",
-            "epsg",};
+    public static Projection getNamedPROJ4CoordinateSystem(final String name) {
+        final String[] files = { "world", "nad83", "nad27", "esri", "epsg", };
 
         try {
-            int p = name.indexOf(':');
+            final int p = name.indexOf(':');
             if (p >= 0) {
                 return readProjectionFile(name.substring(0, p), name.substring(p + 1));
             }
 
-            for (int i = 0; i < files.length; i++) {
-                Projection projection = readProjectionFile(files[i], name);
+            for (final String file : files) {
+                final Projection projection = readProjectionFile(file, name);
                 if (projection != null) {
                     return projection;
                 }
             }
-        } catch (IOException e) {
+        } catch (final IOException e) {
         }
         return null;
     }
 
-    public static void main(String[] args) {
-        Projection projection = ProjectionFactory.fromPROJ4Specification(args);
-
+    public static void main(final String[] args) {
+        final Projection projection = ProjectionFactory.fromPROJ4Specification(args);
 
         if (projection != null) {
             System.out.println(projection.getPROJ4Description());
 
-            for (int i = 0; i
-                    < args.length; i++) {
-                String arg = args[i];
-
+            for (final String arg2 : args) {
+                final String arg = arg2;
 
                 if (!arg.startsWith("+") && !arg.startsWith("-")) {
                     try {
-                        BufferedReader reader = new BufferedReader(new FileReader(new File(args[i])));
-                        Point2D.Double p = new Point2D.Double();
+                        final BufferedReader reader = new BufferedReader(new FileReader(new File(arg2)));
+                        final Point2D.Double p = new Point2D.Double();
                         String line;
                         while ((line = reader.readLine()) != null) {
-                            StringTokenizer t = new StringTokenizer(line, " ");
-                            String slon = t.nextToken();
-                            String slat = t.nextToken();
+                            final StringTokenizer t = new StringTokenizer(line, " ");
+                            final String slon = t.nextToken();
+                            final String slat = t.nextToken();
                             p.x = format.parse(slon, null).doubleValue();
                             p.y = format.parse(slat, null).doubleValue();
                             projection.transform(p, p);
                             System.out.println(p.x + " " + p.y);
                         }
-                    } catch (IOException e) {
-                        System.out.println("IOException: " + args[i] + ": " + e.getMessage());
+                    } catch (final IOException e) {
+                        System.out.println("IOException: " + arg2 + ": " + e.getMessage());
                     }
                 }
             }
