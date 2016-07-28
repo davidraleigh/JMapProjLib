@@ -7,3 +7,6 @@ nbproject/private/*
 /bin/
 /.project
 /.classpath
+/build
+/.gradle
+/.settings
