@@ -40,9 +40,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StreamTokenizer;
-import java.util.Arrays;
-import java.util.Hashtable;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.StringTokenizer;
+import java.util.TreeSet;
 import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -75,7 +76,7 @@ public class ProjectionFactory {
         Ellipsoid ellipsoid = null;
         double a = 0, b = 0, es = 0;
 
-        final Hashtable params = new Hashtable();
+        final HashMap<String, String> params = new HashMap<>();
         for (final String arg : args) {
             if (arg.startsWith("+")) {
                 final int index = arg.indexOf('=');
@@ -88,7 +89,7 @@ public class ProjectionFactory {
         }
 
         String s;
-        s = (String) params.get("proj");
+        s = params.get("proj");
         if (s != null) {
             projection = getNamedPROJ4Projection(s);
             if (projection == null) {
@@ -96,7 +97,7 @@ public class ProjectionFactory {
             }
         }
 
-        s = (String) params.get("init");
+        s = params.get("init");
         if (s != null) {
             projection = getNamedPROJ4CoordinateSystem(s);
             if (projection == null) {
@@ -108,13 +109,13 @@ public class ProjectionFactory {
 
         // Set the ellipsoid
         String ellipsoidName = "";
-        s = (String) params.get("R");
+        s = params.get("R");
         if (s != null) {
             a = Double.parseDouble(s);
         } else {
-            s = (String) params.get("ellps");
+            s = params.get("ellps");
             if (s == null) {
-                s = (String) params.get("datum");
+                s = params.get("datum");
             }
             if (s != null) {
                 final Ellipsoid[] ellipsoids = Ellipsoid.ellipsoids;
@@ -131,26 +132,26 @@ public class ProjectionFactory {
                 a = ellipsoid.equatorRadius;
                 ellipsoidName = s;
             } else {
-                s = (String) params.get("a");
+                s = params.get("a");
                 if (s != null) {
                     a = Double.parseDouble(s);
                 }
-                s = (String) params.get("es");
+                s = params.get("es");
                 if (s != null) {
                     es = Double.parseDouble(s);
                 } else {
-                    s = (String) params.get("rf");
+                    s = params.get("rf");
                     if (s != null) {
                         es = Double.parseDouble(s);
                         es = es * (2. - es);
                     } else {
-                        s = (String) params.get("f");
+                        s = params.get("f");
                         if (s != null) {
                             es = Double.parseDouble(s);
                             es = 1.0 / es;
                             es = es * (2. - es);
                         } else {
-                            s = (String) params.get("b");
+                            s = params.get("b");
                             if (s != null) {
                                 b = Double.parseDouble(s);
                                 es = 1. - (b * b) / (a * a);
@@ -163,28 +164,28 @@ public class ProjectionFactory {
                 }
             }
 
-            s = (String) params.get("R_A");
+            s = params.get("R_A");
             if (s != null && Boolean.getBoolean(s)) {
                 a *= 1. - es * (SIXTH + es * (RA4 + es * RA6));
             } else {
-                s = (String) params.get("R_V");
+                s = params.get("R_V");
                 if (s != null && Boolean.getBoolean(s)) {
                     a *= 1. - es * (SIXTH + es * (RV4 + es * RV6));
                 } else {
-                    s = (String) params.get("R_a");
+                    s = params.get("R_a");
                     if (s != null && Boolean.getBoolean(s)) {
                         a = .5 * (a + b);
                     } else {
-                        s = (String) params.get("R_g");
+                        s = params.get("R_g");
                         if (s != null && Boolean.getBoolean(s)) {
                             a = Math.sqrt(a * b);
                         } else {
-                            s = (String) params.get("R_h");
+                            s = params.get("R_h");
                             if (s != null && Boolean.getBoolean(s)) {
                                 a = 2. * a * b / (a + b);
                                 es = 0.;
                             } else {
-                                s = (String) params.get("R_lat_a");
+                                s = params.get("R_lat_a");
                                 if (s != null) {
                                     double tmp = Math.sin(parseAngle(s));
                                     if (Math.abs(tmp) > MapMath.HALFPI) {
@@ -194,7 +195,7 @@ public class ProjectionFactory {
                                     a *= .5 * (1. - es + tmp) / (tmp * Math.sqrt(tmp));
                                     es = 0.;
                                 } else {
-                                    s = (String) params.get("R_lat_g");
+                                    s = params.get("R_lat_g");
                                     if (s != null) {
                                         double tmp = Math.sin(parseAngle(s));
                                         if (Math.abs(tmp) > MapMath.HALFPI) {
@@ -217,64 +218,64 @@ public class ProjectionFactory {
         // projection.setProjectionLatitudeDegrees( 0 );
         // projection.setProjectionLatitude1Degrees( 0 );
         // projection.setProjectionLatitude2Degrees( 0 );
-        s = (String) params.get("lat_0");
+        s = params.get("lat_0");
         if (s != null) {
             projection.setProjectionLatitudeDegrees(parseAngle(s));
         }
-        s = (String) params.get("lon_0");
+        s = params.get("lon_0");
         if (s != null) {
             projection.setProjectionLongitudeDegrees(parseAngle(s));
         }
-        s = (String) params.get("lat_1");
+        s = params.get("lat_1");
         if (s != null && projection instanceof ConicProjection) {
             final ConicProjection conic = (ConicProjection) projection;
             conic.setProjectionLatitude1Degrees(parseAngle(s));
         }
-        s = (String) params.get("lat_2");
+        s = params.get("lat_2");
         if (s != null && projection instanceof ConicProjection) {
             final ConicProjection conic = (ConicProjection) projection;
             conic.setProjectionLatitude2Degrees(parseAngle(s));
         }
-        s = (String) params.get("lat_ts");
+        s = params.get("lat_ts");
         if (s != null) {
             projection.setTrueScaleLatitudeDegrees(parseAngle(s));
         }
-        s = (String) params.get("x_0");
+        s = params.get("x_0");
         if (s != null) {
             projection.setFalseEasting(Double.parseDouble(s));
         }
-        s = (String) params.get("y_0");
+        s = params.get("y_0");
         if (s != null) {
             projection.setFalseNorthing(Double.parseDouble(s));
         }
 
-        s = (String) params.get("k_0");
+        s = params.get("k_0");
         if (s == null) {
-            s = (String) params.get("k");
+            s = params.get("k");
         }
         if (s != null) {
             projection.setScaleFactor(Double.parseDouble(s));
         }
 
-        s = (String) params.get("units");
+        s = params.get("units");
         if (s != null) {
             final Unit unit = Units.findUnits(s);
             if (unit != null) {
                 projection.setFromMetres(1.0 / unit.value);
             }
         }
-        s = (String) params.get("to_meter");
+        s = params.get("to_meter");
         if (s != null) {
             projection.setFromMetres(1.0 / Double.parseDouble(s));
         }
 
         if (projection instanceof UniversalTransverseMercatorProjection) {
-            s = (String) params.get("zone");
+            s = params.get("zone");
             if (s != null) {
                 ((UniversalTransverseMercatorProjection) projection).setUTMZone(Integer.parseInt(s));
             }
 
-            s = (String) params.get("bsouth");
+            s = params.get("bsouth");
             if (s != null) {
                 ((UniversalTransverseMercatorProjection) projection).setIsSouth(true);
             }
@@ -299,13 +300,13 @@ public class ProjectionFactory {
         return format.parse(s, null).doubleValue();
     }
 
-    private static Hashtable registry;
-    private static Hashtable nameMap;
+    private static HashMap<String, Class<? extends Projection>> registry;
+    private static HashMap<String, String> nameMap;
 
-    private static void register(final String proj4Name, final Class cls) throws InstantiationException, IllegalAccessException {
+    private static void register(final String proj4Name, final Class<? extends Projection> cls) throws InstantiationException, IllegalAccessException {
         try {
             registry.put(proj4Name, cls);
-            final Projection projection = (Projection) cls.newInstance();
+            final Projection projection = cls.newInstance();
             final String readableName = projection.getName();
             nameMap.put(readableName, proj4Name);
         } catch (final InstantiationException e) {
@@ -318,7 +319,7 @@ public class ProjectionFactory {
         if (registry == null) {
             initialize();
         }
-        final String proj4Name = (String) nameMap.get(name);
+        final String proj4Name = nameMap.get(name);
         return getNamedPROJ4Projection(proj4Name);
     }
 
@@ -326,10 +327,10 @@ public class ProjectionFactory {
         if (registry == null) {
             initialize();
         }
-        final Class cls = (Class) registry.get(name);
+        final Class<? extends Projection> cls = registry.get(name);
         if (cls != null) {
             try {
-                final Projection projection = (Projection) cls.newInstance();
+                final Projection projection = cls.newInstance();
                 if (projection != null) {
                     projection.setName(name); // is this needed ? FIXME
                 }
@@ -343,19 +344,17 @@ public class ProjectionFactory {
         return null;
     }
 
-    public static Object[] getOrderedProjectionNames() {
+    public static Collection<String> getOrderedProjectionNames() {
         if (registry == null) {
             initialize();
         }
-        final Object[] names = nameMap.keySet().toArray();
-        Arrays.sort(names);
-        return names;
+        return new TreeSet<>(nameMap.keySet());
     }
 
     private static void initialize() {
         try {
-            registry = new Hashtable();
-            nameMap = new Hashtable();
+            registry = new HashMap<>();
+            nameMap = new HashMap<>();
 
             register("aea", AlbersProjection.class);
             register("aeqd", EquidistantAzimuthalProjection.class);
@@ -543,7 +542,7 @@ public class ProjectionFactory {
                     throw new IOException(t.lineno() + ": '>' expected");
                 }
                 t.nextToken();
-                final Vector v = new Vector();
+                final Vector<String> v = new Vector<>();
                 while (t.ttype != '<') {
                     if (t.ttype == '+') {
                         t.nextToken();
@@ -618,8 +617,7 @@ public class ProjectionFactory {
                 final String arg = arg2;
 
                 if (!arg.startsWith("+") && !arg.startsWith("-")) {
-                    try {
-                        final BufferedReader reader = new BufferedReader(new FileReader(new File(arg2)));
+                    try (final BufferedReader reader = new BufferedReader(new FileReader(new File(arg2)))) {
                         final Point2D.Double p = new Point2D.Double();
                         String line;
                         while ((line = reader.readLine()) != null) {
